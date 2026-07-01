@@ -15,7 +15,7 @@ body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;fon
 .infoscreen-substitutions-list-class .infoscreen-substitutions-list,.infoscreen-substitutions-list-teacher .infoscreen-substitutions-list{table-layout:fixed;margin-bottom:0;text-align:left}
 .infoscreen-substitutions-list-class .infoscreen-substitutions-list td:nth-child(1),.infoscreen-substitutions-list-class .infoscreen-substitutions-list th:nth-child(1){width:5em}
 .infoscreen-substitutions-list-class .infoscreen-substitutions-list td:nth-child(2),.infoscreen-substitutions-list-class .infoscreen-substitutions-list th:nth-child(2){width:4em}
-.infoscreen-substitutions-list-class .infoscreen-substitutions-list td:nth-child(3),.infoscreen-substitutions-list-class .infoscreen-substitutions-list th:nth-child(3){width:24em}
+.infoscreen-substitutions-list-class .infoscreen-substitutions-list td:nth-child(3),.infoscreen-substitutions-list-class .infoscreen-substitutions-list th:nth-child(3){width:30em}
 .infoscreen-substitutions-list-class .infoscreen-substitutions-list td:nth-child(4),.infoscreen-substitutions-list-class .infoscreen-substitutions-list th:nth-child(4){width:4em}
 .infoscreen-substitutions-list-class .infoscreen-substitutions-list td:nth-child(5),.infoscreen-substitutions-list-class .infoscreen-substitutions-list th:nth-child(5){width:5em}
 .infoscreen-substitutions-list>tbody>tr>td,.infoscreen-substitutions-list>tbody>tr>th,.infoscreen-substitutions-list>thead>tr>td,.infoscreen-substitutions-list>thead>tr>th{padding:.1vh .5vw}
@@ -137,11 +137,37 @@ function getHeight(el) { return parseInt(window.getComputedStyle(el).height); }
 function onSuccess(html) {
   clearTimeouts();
   document.getElementById('widgets-container').innerHTML = html;
+
   document.querySelectorAll('.widget').forEach(function(w) {
     var t = w.querySelector('.widget-title'), c = w.querySelector('.widget-content');
     if (c && t && getHeight(w) === getHeight(c))
       c.style.height = (c.clientHeight - (t.offsetHeight + parseFloat(window.getComputedStyle(t).marginBottom))) + 'px';
   });
+
+  document.querySelectorAll('.take-available-space').forEach(function(el) {
+    if (!(el instanceof HTMLElement)) return;
+    var parent = el.parentElement;
+    while (!parent.style.height && parent.classList.contains('take-available-space')) parent = parent.parentElement;
+    function setH() { el.style.height = '1000000px'; el.style.height = (1000000 - (parent.scrollHeight - getHeight(parent))) + 'px'; }
+    function fix() { var h = getHeight(parent); setH(); if (getHeight(parent) !== h) currentTimeouts.push(setTimeout(fix, 50)); }
+    fix(); currentTimeouts.push(setTimeout(fix, 1000));
+  });
+
+  document.querySelectorAll('.alternating-scroller').forEach(function(el) {
+    if (!(el instanceof HTMLElement)) return;
+    var parent = el.parentElement, speed = el.dataset.scrollSpeed || 1, interval;
+    function down() {
+      var diff = getHeight(el) - getHeight(parent);
+      interval = Math.max(5000, Math.floor(diff / 100 * 10000));
+      interval = Math.round(interval / speed);
+      var tt = Math.max(interval / 1000 / 3, interval / 1000 / 2 - 8);
+      if (diff > 3) { el.style.transition = 'margin-top ' + tt + 's linear'; el.style.marginTop = '-' + diff + 'px'; }
+      currentTimeouts.push(setTimeout(up, interval / 2));
+    }
+    function up() { el.style.marginTop = '0'; currentTimeouts.push(setTimeout(down, interval / 2)); }
+    up();
+  });
+
   document.querySelectorAll('.table-paginator').forEach(function(el) {
     if (!(el instanceof HTMLElement)) return;
     var parent = el.parentElement, tbody = el.querySelector('tbody');
@@ -159,6 +185,15 @@ function onSuccess(html) {
       currentTimeouts.push(setTimeout(next, (minInt + (getHeight(tbody) / window.innerHeight) * (maxInt - minInt)) / 2));
     }
     next();
+  });
+
+  document.querySelectorAll('.widget').forEach(function(w) {
+    var tc = w.querySelector('.substitution-tiles');
+    if (!tc || !w.style.height) return;
+    var h = parseInt(w.style.height);
+    var rows = Math.ceil(parseInt(tc.attributes.numberOfClasses.value) / parseInt(tc.attributes.columns.value));
+    var th = (h / rows) + '%';
+    tc.querySelectorAll('.substitution-tile').forEach(function(t) { if (t instanceof HTMLElement) t.style.height = th; });
   });
 }
 
