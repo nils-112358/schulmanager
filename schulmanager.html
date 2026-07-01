@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Schulmanager Streich</title>
+<style>
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;font-size:clamp(10px,1vw,20px);line-height:1.5;background:#fff;overflow:hidden}
+.widgets-container{position:fixed;top:0;right:0;bottom:0;left:0;background:#fff}
+.widgets-container .widget{overflow:hidden}
+.widgets-container .widget .widget-title{font-size:1.4em;font-weight:700;padding-bottom:.15em;margin-bottom:.15em;border-bottom:.13em solid #428bca;color:#428bca}
+.widgets-container .widget .widget-title:empty{display:none}
+.widgets-container .widget .widget-content{height:100%}
+.infoscreen-substitutions-list-class .infoscreen-substitutions-list,.infoscreen-substitutions-list-teacher .infoscreen-substitutions-list{table-layout:fixed;margin-bottom:0;text-align:left}
+.infoscreen-substitutions-list-class .infoscreen-substitutions-list td:nth-child(1),.infoscreen-substitutions-list-class .infoscreen-substitutions-list th:nth-child(1){width:5em}
+.infoscreen-substitutions-list-class .infoscreen-substitutions-list td:nth-child(2),.infoscreen-substitutions-list-class .infoscreen-substitutions-list th:nth-child(2){width:4em}
+.infoscreen-substitutions-list-class .infoscreen-substitutions-list td:nth-child(3),.infoscreen-substitutions-list-class .infoscreen-substitutions-list th:nth-child(3){width:24em}
+.infoscreen-substitutions-list-class .infoscreen-substitutions-list td:nth-child(4),.infoscreen-substitutions-list-class .infoscreen-substitutions-list th:nth-child(4){width:4em}
+.infoscreen-substitutions-list-class .infoscreen-substitutions-list td:nth-child(5),.infoscreen-substitutions-list-class .infoscreen-substitutions-list th:nth-child(5){width:5em}
+.infoscreen-substitutions-list>tbody>tr>td,.infoscreen-substitutions-list>tbody>tr>th,.infoscreen-substitutions-list>thead>tr>td,.infoscreen-substitutions-list>thead>tr>th{padding:.1vh .5vw}
+.infoscreen-substitutions-list>tbody>tr.cancelled .room,.infoscreen-substitutions-list>tbody>tr.cancelled .subject,.infoscreen-substitutions-list>tbody>tr.cancelled .teacher,.infoscreen-substitutions-list>thead>tr.cancelled .room,.infoscreen-substitutions-list>thead>tr.cancelled .subject,.infoscreen-substitutions-list>thead>tr.cancelled .teacher{color:red;text-decoration:line-through}
+.visual-diff-new{color:green}
+.visual-diff-old{color:red}
+.substitution-tiles .substitution-tile{display:inline-block;padding:.5vh .5vw;float:left;position:relative}
+.substitution-tiles .substitution-tile .class-name{font-size:1.2em;font-weight:700;border-bottom:.2vh solid grey;color:grey;text-align:center}
+.substitution-tiles .substitution-tile .substitutions-table-scroller{position:absolute;top:2em;bottom:0;width:47%;overflow:hidden}
+.substitution-tiles .substitution-tile .substitutions-table-scroller.today{left:.5vmin}
+.substitution-tiles .substitution-tile .substitutions-table-scroller.tomorrow{right:.5vmin}
+.substitution-tiles .substitution-tile .mini-substitutions-table{font-size:.8em;width:100%}
+.substitution-tiles .substitution-tile .mini-substitutions-table td,.substitution-tiles .substitution-tile .mini-substitutions-table th{vertical-align:top}
+.substitution-tiles .substitution-tile .mini-substitutions-table td:not(:first-child),.substitution-tiles .substitution-tile .mini-substitutions-table th:not(:first-child){padding-left:.5vw}
+.substitution-tiles .substitution-tile .mini-substitutions-table tbody:not(:first-child) tr:first-child td,.substitution-tiles .substitution-tile .mini-substitutions-table tbody:not(:first-child) tr:first-child th{border-top:.1vh solid #d3d3d3}
+.substitution-tiles .substitution-tile .mini-substitutions-table tbody.cancelled{color:red;text-decoration:line-through}
+table{border-spacing:0;border-collapse:collapse}
+.table{width:100%;margin-bottom:1rem;color:#212529}
+.table td,.table th{padding:.75rem;vertical-align:top;border-top:1px solid #dee2e6}
+.table thead th{vertical-align:bottom;border-bottom:2px solid #dee2e6}
+.table tbody+tbody{border-top:2px solid #dee2e6}
+.table-sm td,.table-sm th{padding:.3rem}
+.table-bordered{border:1px solid #dee2e6}
+.table-bordered td,.table-bordered th{border:1px solid #dee2e6}
+.table-bordered thead td,.table-bordered thead th{border-bottom-width:2px}
+.text-left{text-align:left!important}
+.text-right{text-align:right!important}
+.text-center{text-align:center!important}
+.class-hour{padding-left:.3em}
+.room{padding-right:.3em}
+.alert{padding:6px 12px;border:1px solid;border-radius:2px}
+.alert-warning{color:#7b5c00;background-color:#fbefcc;border-color:#fae9b8}
+
+.loading-state{display:flex;align-items:center;justify-content:center;height:80%;font-size:1.8em;color:#999;flex-direction:column;gap:1em}
+.loading-state .spinner{width:48px;height:48px;border:4px solid #ddd;border-top-color:#428bca;border-radius:50%;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.error-state{display:flex;align-items:center;justify-content:center;height:80%;color:#c00;flex-direction:column;gap:1.5em;padding:2em;text-align:center;font-size:1.4em}
+.error-state .sub{font-size:.7em;color:#666;line-height:1.6}
+.error-state code{display:block;background:#f5f5f5;padding:1em;border-radius:.5em;font-size:.6em;color:#333;word-break:break-all;border:1px solid #ddd;text-align:left}
+.error-state .btn{display:inline-block;background:#428bca;color:#fff;padding:.5em 1.5em;border-radius:.3em;text-decoration:none;font-size:.7em;margin-top:.5em}
+</style>
+</head>
+<body>
+
+<div class="widgets-container" id="widgets-container">
+  <div class="loading-state" id="loading-state">
+    <div class="spinner"></div>
+    <div>Lade Vertretungsdaten …</div>
+  </div>
+</div>
+
+<script>
+var SCREEN_ID = 'pDfrUsj1D37bhK';
+var DATA_URL = 'https://login.schulmanager-online.de/screen/' + SCREEN_ID + '/content';
+
+var SUBJECT_MAP = {
+  'D':   'Zellenbelegung',
+  'D\u00dc': 'Gittertalk',
+  'E':   'Knastslang',
+  'M':   'Fluchtplanung',
+  'B':   'Schlossknacken',
+  'G':   'Ausbruchsgeschichte',
+  'K':   'T\u00e4towierkunst',
+  'F':   'Flucht auf Franz\u00f6sisch',
+  'Ph':  'Gitterstabphysik',
+  'EG':  'Bew\u00e4hrungsgespr\u00e4ch',
+  'SSp': 'Hofspaziergang',
+  'Sm':  'Schl\u00fcsselfeilen',
+  'Sw':  'Kanalfluchtschwimmen',
+};
+
+var PROXIES = [
+  'https://api.cors.lol/?url=',
+  'https://api.allorigins.win/raw?url=',
+];
+
+var proxyIndex = 0;
+
+function showError(msg) {
+  document.getElementById('widgets-container').innerHTML = '<div class="error-state">'
+    + '<div>' + msg + '</div>'
+    + '<div class="sub">Stelle sicher, dass die Datei über einen Server geöffnet wird (z.B. GitHub Pages oder python3 -m http.server).</div>'
+    + '<a class="btn" href="https://github.com/new" target="_blank">GitHub Repo erstellen</a>'
+    + '</div>';
+}
+
+function tryFetch() {
+  if (proxyIndex >= PROXIES.length) {
+    showError('Konnte Vertretungsdaten nicht laden. CORS-Proxies nicht erreichbar.');
+    return;
+  }
+  var url = PROXIES[proxyIndex] + encodeURIComponent(DATA_URL);
+  var xhr = new XMLHttpRequest();
+  xhr.timeout = 15000;
+  xhr.ontimeout = xhr.onerror = function() { proxyIndex++; tryFetch(); };
+  xhr.onload = function() {
+    if (xhr.status >= 200 && xhr.status < 300) {
+      var html = xhr.responseText;
+      if (PROXIES[proxyIndex-1] && PROXIES[proxyIndex-1].includes('api.cors.lol')) {
+        // cors.lol returns HTML directly
+        onSuccess(html);
+      } else if (PROXIES[proxyIndex-1] && PROXIES[proxyIndex-1].includes('allorigins.win/get')) {
+        try { onSuccess(JSON.parse(html).contents); } catch(e) { onSuccess(html); }
+      } else {
+        onSuccess(html);
+      }
+    } else { proxyIndex++; tryFetch(); }
+  };
+  xhr.open('GET', url);
+  xhr.send();
+}
+
+var currentTimeouts = [];
+function clearTimeouts() { currentTimeouts.forEach(function(t) { clearTimeout(t); }); currentTimeouts = []; }
+function getHeight(el) { return parseInt(window.getComputedStyle(el).height); }
+
+function onSuccess(html) {
+  clearTimeouts();
+  document.getElementById('widgets-container').innerHTML = html;
+  document.querySelectorAll('.widget').forEach(function(w) {
+    var t = w.querySelector('.widget-title'), c = w.querySelector('.widget-content');
+    if (c && t && getHeight(w) === getHeight(c))
+      c.style.height = (c.clientHeight - (t.offsetHeight + parseFloat(window.getComputedStyle(t).marginBottom))) + 'px';
+  });
+  document.querySelectorAll('.table-paginator').forEach(function(el) {
+    if (!(el instanceof HTMLElement)) return;
+    var parent = el.parentElement, tbody = el.querySelector('tbody');
+    if (!tbody) return;
+    var minInt = 3000, maxInt = 15000;
+    function getOH(e) { if (!e) return 0; if (typeof e === 'string') e = document.querySelector(e); var s = window.getComputedStyle(e); return Math.ceil(e.offsetHeight + parseFloat(s.marginTop) + parseFloat(s.marginBottom)); }
+    function hasClear() { var s = window.getComputedStyle(el); return getHeight(parent) > (el.scrollHeight + parseFloat(s.marginTop) + parseFloat(s.marginBottom) + getOH(parent.querySelector('.substitution-text-container')) + getOH(parent.querySelector('.teachers-table'))); }
+    var offset = 0;
+    function next() {
+      var rows = tbody.querySelectorAll('tr');
+      rows.forEach(function(r) { r.style.display = 'none'; });
+      do { rows[offset].style.display = 'table-row'; offset++; } while (hasClear() && offset < rows.length);
+      if (offset < rows.length) rows[--offset].style.display = 'none';
+      offset = rows.length > 0 ? offset % rows.length : 0;
+      currentTimeouts.push(setTimeout(next, (minInt + (getHeight(tbody) / window.innerHeight) * (maxInt - minInt)) / 2));
+    }
+    next();
+  });
+}
+
+tryFetch();
+setInterval(tryFetch, (115 + Math.round(Math.random() * 10)) * 1000);
+</script>
+
+<script>
+(function() {
+  function patchSubjects(root) {
+    root.querySelectorAll('td.subject span').forEach(function(span) {
+      var t = span.textContent.trim();
+      var hasParen = t.startsWith('(') && t.endsWith(')');
+      var key = hasParen ? t.slice(1, -1) : t;
+      if (SUBJECT_MAP[key]) span.textContent = hasParen ? '(' + SUBJECT_MAP[key] + ')' : SUBJECT_MAP[key];
+    });
+  }
+  function patchDates(root) {
+    var days = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'];
+    function fmt(d) { return days[d.getDay()] + ', ' + String(d.getDate()).padStart(2, '0') + '.' + String(d.getMonth() + 1).padStart(2, '0') + '.' + d.getFullYear(); }
+    var now = new Date(), todayStr = fmt(now);
+    var tomorrow = new Date(now);
+    var add = 1;
+    if (now.getDay() === 5) add = 3;
+    if (now.getDay() === 6) add = 2;
+    tomorrow.setDate(now.getDate() + add);
+    root.querySelectorAll('.widget-title').forEach(function(el) {
+      el.innerHTML = el.innerHTML.replace(/heute,\s*[\d\.]+/g, 'heute, ' + todayStr).replace(/morgen,\s*\w+,\s*[\d\.]+/g, 'morgen, ' + fmt(tomorrow));
+    });
+  }
+  function patchAll(container) { patchSubjects(container); patchDates(container); }
+  document.addEventListener('DOMContentLoaded', function() { patchAll(document); });
+  var container = null;
+  function hookContainer() {
+    container = document.getElementById('widgets-container');
+    if (!container) return;
+    var proto = Object.getOwnPropertyDescriptor(Element.prototype, 'innerHTML');
+    var origSet = proto.set;
+    Object.defineProperty(container, 'innerHTML', {
+      set: function(html) {
+        var tmp = document.createElement('div');
+        origSet.call(tmp, html);
+        patchAll(tmp);
+        origSet.call(this, tmp.innerHTML);
+      },
+      get: proto.get
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', hookContainer);
+  else hookContainer();
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function() { setTimeout(tryFetch, 100); });
+  else setTimeout(tryFetch, 100);
+})();
+</script>
+
+<script>
+(function() {
+  'use strict';
+  function drawSkull(ctx, x, y, s, color) {
+    var r = s * 0.65;
+    ctx.beginPath(); ctx.moveTo(x - r, y - s * 0.25); ctx.bezierCurveTo(x - r, y - s * 0.85, x + r, y - s * 0.85, x + r, y - s * 0.25); ctx.bezierCurveTo(x + r, y + s * 0.15, x - r, y + s * 0.15, x - r, y - s * 0.25); ctx.closePath(); ctx.fillStyle = color; ctx.fill(); ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.fillStyle = 'rgba(0,0,0,0.1)'; ctx.beginPath(); ctx.ellipse(x - s * 0.5, y + s * 0.05, s * 0.15, s * 0.12, 0, 0, Math.PI * 2); ctx.fill(); ctx.beginPath(); ctx.ellipse(x + s * 0.5, y + s * 0.05, s * 0.15, s * 0.12, 0, 0, Math.PI * 2); ctx.fill();
+    var eyeY = y - s * 0.3, eyeR = s * 0.2, eyeOff = s * 0.32;
+    ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 15; ctx.fillStyle = '#000'; ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.ellipse(x - eyeOff, eyeY, eyeR, eyeR * 1.1, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); ctx.beginPath(); ctx.ellipse(x + eyeOff, eyeY, eyeR, eyeR * 1.1, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); ctx.shadowBlur = 0;
+    var ny = y - s * 0.02, ns = s * 0.12; ctx.fillStyle = '#000'; ctx.beginPath(); ctx.moveTo(x, ny + ns); ctx.bezierCurveTo(x - ns * 0.7, ny + ns * 0.2, x - ns * 0.7, ny - ns * 0.3, x, ny - ns * 0.5); ctx.bezierCurveTo(x + ns * 0.7, ny - ns * 0.3, x + ns * 0.7, ny + ns * 0.2, x, ny + ns); ctx.closePath(); ctx.fill();
+    var jw = s * 0.5, jt = y + s * 0.15, jb = y + s * 0.55; ctx.fillStyle = color; ctx.beginPath(); ctx.moveTo(x - jw, jt + s * 0.1); ctx.bezierCurveTo(x - jw * 0.6, jb + s * 0.05, x + jw * 0.6, jb + s * 0.05, x + jw, jt + s * 0.1); ctx.bezierCurveTo(x + jw * 0.8, jt - s * 0.05, x - jw * 0.8, jt - s * 0.05, x - jw, jt + s * 0.1); ctx.closePath(); ctx.fill(); ctx.stroke();
+    var nTeeth = 10, spacing = (jw * 1.8) / nTeeth, ty = jt + s * 0.18, th = s * 0.13, tw = spacing * 0.5; ctx.fillStyle = '#e8e0d0';
+    for (var i = 0; i < nTeeth; i++) { var tx = x - jw * 0.9 + (i + 0.5) * spacing; ctx.beginPath(); ctx.roundRect(tx - (tw * (0.6 + Math.random() * 0.4)) / 2, ty, tw * (0.6 + Math.random() * 0.4), th, 2); ctx.fill(); }
+    ctx.fillStyle = 'rgba(0,0,0,0.15)'; for (var i = 0; i < nTeeth - 1; i++) { ctx.fillRect(x - jw * 0.9 + (i + 1) * spacing - spacing * 0.08, ty, spacing * 0.16, th); }
+    var by = jb + s * 0.25, bl = s * 0.7;
+    function drawBone(cx, cy, angle, len, width) { ctx.save(); ctx.translate(cx, cy); ctx.rotate(angle); ctx.fillStyle = color; ctx.strokeStyle = 'rgba(0,0,0,0.2)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(-len / 2, -width / 2); ctx.lineTo(len / 2, -width / 2); ctx.lineTo(len / 2, width / 2); ctx.lineTo(-len / 2, width / 2); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.beginPath(); ctx.arc(-len / 2, 0, width / 2 + width * 0.15, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); ctx.beginPath(); ctx.arc(len / 2, 0, width / 2 + width * 0.15, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); ctx.restore(); }
+    drawBone(x - bl * 0.2, by + bl * 0.25, -0.7, bl, s * 0.1); drawBone(x + bl * 0.2, by + bl * 0.25, 0.7, bl, s * 0.1);
+    ctx.fillStyle = 'rgba(255,255,255,0.08)'; ctx.beginPath(); ctx.ellipse(x + s * 0.1, y - s * 0.55, s * 0.2, s * 0.12, -0.3, 0, Math.PI * 2); ctx.fill();
+  }
+  function showSkull() {
+    var o = document.createElement('div'); o.id = 'skull-overlay'; o.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);z-index:99999;display:flex;align-items:center;justify-content:center';
+    var c = document.createElement('canvas'); c.width = window.innerWidth; c.height = window.innerHeight; c.style.cssText = 'width:100%;height:100%;display:block'; o.appendChild(c); document.body.appendChild(o);
+    var ctx = c.getContext('2d'), cx = c.width / 2, cy = c.height / 2 - 50, size = Math.min(c.width, c.height) / 5, start = Date.now(), dur = 9000;
+    (function anim() { var t = Date.now() - start; if (t >= dur) { var e = document.getElementById('skull-overlay'); if (e) e.remove(); return; } ctx.clearRect(0, 0, c.width, c.height); var a = t < 2500 ? t / 2500 : (t < 6500 ? 1 : 1 - (t - 6500) / 2500); a = Math.max(0, Math.min(1, a)); var clr = 'rgb(' + Math.floor(80 + 175 * a) + ',0,0)'; ctx.save(); ctx.globalAlpha = a * 0.9; ctx.shadowColor = 'red'; ctx.shadowBlur = 60 * a; drawSkull(ctx, cx, cy, size, clr); ctx.restore(); requestAnimationFrame(anim); })();
+  }
+  function applyGlitch(intensity) {
+    var off = { low: 5, medium: 10, high: 18 }[intensity] || 10, container = document.getElementById('widgets-container'); if (!container) return;
+    var shakes = Math.floor(Math.random() * 3) + 2;
+    for (var s = 0; s < shakes; s++)(function(seq) { setTimeout(function() { if (!container) return; container.style.transition = 'none'; container.style.transform = 'translate(' + (Math.random() * 2 - 1) * (off + Math.random() * 6) + 'px,' + (Math.random() * 2 - 1) * (off + Math.random() * 6) + 'px) scale(' + (1 + (Math.random() - 0.5) * 0.02) + ')'; }, seq * 30) })(s);
+    var ov = document.createElement('div'); ov.id = 'glitch-overlay'; ov.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9998;mix-blend-mode:screen;background:' + ['rgba(255,0,255,0.15)', 'rgba(0,255,255,0.15)', 'rgba(255,0,0,0.12)', 'rgba(0,255,0,0.1)', 'rgba(255,255,0,0.1)'][Math.floor(Math.random() * 5)]; document.body.appendChild(ov); setTimeout(function() { var e = document.getElementById('glitch-overlay'); if (e) e.remove() }, 120);
+    var n = Math.floor(Math.random() * 4) + 2;
+    for (var i = 0; i < n; i++)(function(idx) { setTimeout(function() { var st = document.createElement('div'); st.id = 'glitch-stripe-' + idx; var sy = Math.random() * window.innerHeight, sc = ['rgba(255,0,255,0.35)', 'rgba(0,255,255,0.35)', 'rgba(255,0,0,0.3)', 'rgba(0,255,0,0.25)', 'rgba(255,255,0,0.2)', 'rgba(255,0,128,0.3)']; st.style.cssText = 'position:fixed;top:' + sy + 'px;left:0;width:' + ((0.3 + Math.random() * 0.7) * 100) + '%;height:' + (1 + Math.random() * 12) + 'px;pointer-events:none;z-index:9998;background:' + sc[Math.floor(Math.random() * sc.length)]; document.body.appendChild(st); setTimeout(function() { var e = document.getElementById('glitch-stripe-' + idx); if (e) e.remove() }, 80 + Math.random() * 100); }, idx * 20) })(i);
+    if (Math.random() > 0.5) { var sl = document.createElement('div'); sl.id = 'glitch-slice'; sl.style.cssText = 'position:fixed;top:' + (Math.random() * window.innerHeight * 0.7) + 'px;left:' + (Math.random() * 2 - 1) * 20 + 'px;width:100%;height:' + (10 + Math.random() * 60) + 'px;pointer-events:none;z-index:9997;background:rgba(255,255,255,0.06);mix-blend-mode:difference'; document.body.appendChild(sl); setTimeout(function() { var e = document.getElementById('glitch-slice'); if (e) e.remove() }, 100); }
+    setTimeout(function() { if (container) { container.style.transform = ''; container.style.transition = '' } }, 80 + Math.random() * 150);
+  }
+  function startEffects() {
+    var last = Date.now(), interval = 300000;
+    (function loop() { var now = Date.now(); if (now - last >= interval) { showSkull(); last = now; } setTimeout(function() { applyGlitch(['low', 'medium', 'medium', 'high'][Math.floor(Math.random() * 4)]); loop(); }, 800 + Math.random() * 3000); })();
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', startEffects); else startEffects();
+})();
+</script>
+</body>
+</html>
