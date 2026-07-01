@@ -89,6 +89,7 @@ var SUBJECT_MAP = {
 };
 
 var PROXIES = [
+  'https://corsproxy.io/?url=',
   'https://api.cors.lol/?url=',
   'https://api.allorigins.win/raw?url=',
 ];
@@ -110,7 +111,7 @@ function tryFetch() {
   }
   var url = PROXIES[proxyIndex] + encodeURIComponent(DATA_URL);
   var xhr = new XMLHttpRequest();
-  xhr.timeout = 15000;
+  xhr.timeout = 30000;
   xhr.ontimeout = xhr.onerror = function() { proxyIndex++; tryFetch(); };
   xhr.onload = function() {
     if (xhr.status >= 200 && xhr.status < 300) {
