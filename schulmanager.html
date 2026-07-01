@@ -137,6 +137,7 @@ function getHeight(el) { return parseInt(window.getComputedStyle(el).height); }
 
 function onSuccess(html) {
   clearTimeouts();
+  html = html.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '').replace(/<link[^>]*>/gi, '');
   document.getElementById('widgets-container').innerHTML = html;
 
   document.querySelectorAll('.widget').forEach(function(w) {
